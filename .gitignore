@@ -1,0 +1,23 @@
+﻿# This file lists files that should not be uploaded by git.
+
+/packages
+/.vs
+/.vscode
+/x64
+/Release
+/Debug
+/MinSizeRel
+/RelWithDebInfo
+/Fractal4D.dir
+/CMake
+/CMakeFiles
+
+CMakeCache.txt
+*.cmake
+*.user
+*.vcxproj
+*.sln
+*.filters
+
+Makefile
+Fractal4D

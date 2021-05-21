@@ -3,11 +3,6 @@
 layout(rgba32f, binding = 0) writeonly uniform image2D img_output;
 layout(r8ui, binding = 1) readonly uniform uimage3D blockData;
 
-
-
-//! #define WORLD_SIZE 64
-//! #define WORLD_HEIGHT 64
-//! #define TEXTURE_RES 16
 //! #define RENDER_DIST 100
 
 struct Camera

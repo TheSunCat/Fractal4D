@@ -50,15 +50,43 @@ GLuint screenTexture;
 float deltaTime = 16.666f; // 16.66 = 60fps
 
 // spawn player at world center
-glm::vec3 cameraPos = glm::vec3(0, 20, 0);
+glm::vec3 cameraPos = glm::vec3(0, 3, 0);
 
 float cameraYaw = 0.01f; // make it not axis aligned by default to avoid raymarching error
 float cameraPitch = -2.0f * PI;                                                                                 
 float FOV = 90.0f;
 glm::vec2 frustumDiv = (SCR_RES * FOV);
 
+glm::vec3 cameraFront;
+glm::vec3 cameraRight;
+glm::vec3 cameraUp;
+
+glm::vec3 worldUp = glm::vec3(0, 1, 0);
+
 float sinYaw, sinPitch;
 float cosYaw, cosPitch;
+
+void updateCameraVectors()
+{
+    cameraFront = rotToVec3(cameraYaw, cameraPitch);
+	
+    // Also re-calculate the Right and Up vector
+    cameraRight = glm::normalize(glm::cross(cameraFront, worldUp));  // Normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
+    cameraUp = glm::normalize(glm::cross(cameraRight, cameraFront));
+}
+
+glm::vec3 operator*(const glm::vec3& left, const bool& right)
+{
+    if (right)
+        return left;
+    else
+        return glm::vec3(0);
+}
+
+glm::vec3 operator*(const bool& left, const glm::vec3& right)
+{
+    return right * left;
+}
 
 static glm::vec3 lerp(const glm::vec3& start, const glm::vec3& end, const float t)
 {
@@ -142,7 +170,13 @@ void run(GLFWwindow* window) {
         if (needsResUpdate) {
             updateScreenResolution(window);
         }
+    	
+    	updateCameraVectors();
 
+    	// """"physics""""
+        cameraPos += (controller.forward * -cameraFront) / 100.F;
+        cameraPos += (controller.right * -cameraRight) / 100.F;
+        cameraPos += (controller.jump * -cameraUp) / 100.F;
 
         // Compute the raytracing!
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -154,13 +188,13 @@ void run(GLFWwindow* window) {
 
         computeShader.setVec2("screenSize", SCR_RES.x, SCR_RES.y);
 
-
         computeShader.setFloat("camera.cosYaw", cos(cameraYaw));
         computeShader.setFloat("camera.cosPitch", cos(cameraPitch));
         computeShader.setFloat("camera.sinYaw", sin(cameraYaw));
         computeShader.setFloat("camera.sinPitch", sin(cameraPitch));
         computeShader.setVec2("camera.frustumDiv", frustumDiv);
         computeShader.setVec3("camera.pos", cameraPos);
+        computeShader.setFloat("time", frameTime);
 
 
         glInvalidateTexImage(screenTexture, 0);
@@ -265,14 +299,14 @@ void pollInputs(GLFWwindow* window)
 {
     controller.reset();
 
-    if(keyDown(window, GLFW_KEY_W))
+    if (keyDown(window, GLFW_KEY_W))
         controller.forward += 1.0f;
+    if (keyDown(window, GLFW_KEY_A))
+        controller.right -= 1.0f;
     if (keyDown(window, GLFW_KEY_S))
         controller.forward -= 1.0f;
     if (keyDown(window, GLFW_KEY_D))
         controller.right += 1.0f;
-    if (keyDown(window, GLFW_KEY_A))
-        controller.right -= 1.0f;
     if (keyDown(window, GLFW_KEY_SPACE))
         controller.jump = true;
 
@@ -358,7 +392,7 @@ int main(const int argc, const char** argv)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // add on Mac bc Apple is big dumb :(
 #endif
     
-    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Minecraft4k", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Fractal4D", nullptr, nullptr);
     if (!window)
     {
         // Window or OpenGL context creation failed
@@ -403,13 +437,7 @@ int main(const int argc, const char** argv)
 
     std::cout << "Building shaders... ";
     std::stringstream defines;
-    defines << "#define WORLD_SIZE " << WORLD_SIZE << "\n"
-            << "#define WORLD_HEIGHT " << WORLD_HEIGHT << "\n"
-            << "#define TEXTURE_RES " << TEXTURE_RES << "\n"
-            << "#define RENDER_DIST " << RENDER_DIST << "\n";
-#ifdef CLASSIC
-    defines << "#define CLASSIC\n";
-#endif
+    defines << "#define RENDER_DIST " << RENDER_DIST << "\n";
 
     defines << "layout(local_size_x = " << WORK_GROUP_SIZE << ", local_size_y = " << WORK_GROUP_SIZE << ") in;";
 
@@ -432,7 +460,7 @@ int main(const int argc, const char** argv)
 
     std::cout << "Initializing engine...\n";
     init();
-    std::cout << "Finished initializing engine! Running the game...\n";
+    std::cout << "Finished initializing engine! Fractalizing the renderer...\n";
 
     run(window);
 }

@@ -239,8 +239,8 @@ std::ostream& operator<<(std::ostream& os, const glm::vec3& vec3)
 glm::vec3 rotToVec3(const float yaw, const float pitch)
 {
     glm::vec3 ret;
-    ret.x = cos(glm::radians(yaw)) * (pitch == 0 ? 1 : cos(glm::radians(pitch)));
-    ret.y = pitch == 0 ? 0 : sin(glm::radians(pitch));
-    ret.z = sin(glm::radians(yaw)) * (pitch == 0 ? 1 : cos(glm::radians(pitch)));
+    ret.x = cos(yaw) * (pitch == 0 ? 1 : cos(pitch));
+    ret.y = pitch == 0 ? 0 : sin(pitch);
+    ret.z = sin(yaw) * (pitch == 0 ? 1 : cos(pitch));
     return glm::normalize(ret);
 }

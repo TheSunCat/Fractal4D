@@ -17,6 +17,7 @@ struct Controller
     float right;
 
     bool jump;
+    bool sneak;
 
     glm::vec2 lastMousePos;
 
@@ -27,6 +28,7 @@ struct Controller
         forward = 0.0f;
         right = 0.0f;
         jump = false;
+        sneak = false;
     }
 };
 
@@ -34,7 +36,7 @@ Controller controller{};
 
 bool needsResUpdate = true;
 
-int SCR_DETAIL = 2;
+int SCR_DETAIL = 3;
 
 constexpr glm::vec2 defaultRes(214, 120);
 
@@ -65,33 +67,6 @@ glm::vec3 worldUp = glm::vec3(0, 1, 0);
 
 float sinYaw, sinPitch;
 float cosYaw, cosPitch;
-
-void updateCameraVectors()
-{
-    cameraFront = rotToVec3(cameraYaw, cameraPitch);
-	
-    // Also re-calculate the Right and Up vector
-    cameraRight = glm::normalize(glm::cross(cameraFront, worldUp));  // Normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
-    cameraUp = glm::normalize(glm::cross(cameraRight, cameraFront));
-}
-
-glm::vec3 operator*(const glm::vec3& left, const bool& right)
-{
-    if (right)
-        return left;
-    else
-        return glm::vec3(0);
-}
-
-glm::vec3 operator*(const bool& left, const glm::vec3& right)
-{
-    return right * left;
-}
-
-static glm::vec3 lerp(const glm::vec3& start, const glm::vec3& end, const float t)
-{
-    return start + (end - start) * t;
-}
 
 void initTexture(GLuint* texture, const int width, const int height);
 
@@ -171,12 +146,18 @@ void run(GLFWwindow* window) {
             updateScreenResolution(window);
         }
     	
-    	updateCameraVectors();
+        cosYaw = cos(cameraYaw);
+        cosPitch = cos(cameraPitch);
+        sinYaw = sin(cameraYaw);
+        sinPitch = sin(cameraPitch);
 
     	// """"physics""""
-        cameraPos += (controller.forward * -cameraFront) / 100.F;
-        cameraPos += (controller.right * -cameraRight) / 100.F;
-        cameraPos += (controller.jump * -cameraUp) / 100.F;
+        cameraPos.x += (sinYaw * controller.forward + cosYaw * controller.right) / 100.;
+        cameraPos.z += (cosYaw * controller.forward - sinYaw * controller.right) / 100.;
+
+    	
+        cameraPos += (controller.jump * -worldUp) / 100.F;
+        cameraPos += (controller.sneak * worldUp) / 100.F;
 
         // Compute the raytracing!
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -188,13 +169,15 @@ void run(GLFWwindow* window) {
 
         computeShader.setVec2("screenSize", SCR_RES.x, SCR_RES.y);
 
-        computeShader.setFloat("camera.cosYaw", cos(cameraYaw));
-        computeShader.setFloat("camera.cosPitch", cos(cameraPitch));
-        computeShader.setFloat("camera.sinYaw", sin(cameraYaw));
-        computeShader.setFloat("camera.sinPitch", sin(cameraPitch));
+        computeShader.setFloat("camera.cosYaw", cosYaw);
+        computeShader.setFloat("camera.cosPitch", cosPitch);
+        computeShader.setFloat("camera.sinYaw", sinYaw);
+        computeShader.setFloat("camera.sinPitch", sinPitch);
         computeShader.setVec2("camera.frustumDiv", frustumDiv);
         computeShader.setVec3("camera.pos", cameraPos);
         computeShader.setFloat("time", frameTime);
+    	
+        computeShader.setVec3("color", glm::vec3(0, 1, 1));
 
 
         glInvalidateTexImage(screenTexture, 0);
@@ -309,6 +292,8 @@ void pollInputs(GLFWwindow* window)
         controller.right += 1.0f;
     if (keyDown(window, GLFW_KEY_SPACE))
         controller.jump = true;
+	if (keyDown(window, GLFW_KEY_LEFT_SHIFT))
+        controller.sneak = true;
 
     if (keyPress(window, GLFW_KEY_COMMA)) {
         SCR_DETAIL--;

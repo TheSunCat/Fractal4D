@@ -57,7 +57,7 @@ namespace Perlin
 
 float clamp(float val, float min, float max);
 
-bool glError();
+glm::vec3 lerp(const glm::vec3& start, const glm::vec3& end, const float t);
 
 void GLAPIENTRY error_callback(GLenum source,
     GLenum type,
@@ -70,3 +70,6 @@ void GLAPIENTRY error_callback(GLenum source,
 std::ostream& operator<<(std::ostream& os, const glm::vec3& vec3);
 
 glm::vec3 rotToVec3(float yaw, float pitch);
+
+glm::vec3 operator*(const glm::vec3& left, const bool& right);
+glm::vec3 operator*(const bool& left, const glm::vec3& right);

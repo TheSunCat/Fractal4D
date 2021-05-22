@@ -205,15 +205,9 @@ float clamp(float val, const float min, const float max)
     return val;
 }
 
-bool glError()
+glm::vec3 lerp(const glm::vec3& start, const glm::vec3& end, const float t)
 {
-    const GLenum err = glGetError();
-    if (err != GL_NO_ERROR) {
-        std::cerr << "OpenGL error " << err << std::endl;
-        return true;
-    }
-
-    return false;
+    return start + (end - start) * t;
 }
 
 void GLAPIENTRY error_callback(GLenum source,
@@ -226,8 +220,6 @@ void GLAPIENTRY error_callback(GLenum source,
     fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
         (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
         type, severity, message);
-    
-    //__debugbreak();
 }
 
 std::ostream& operator<<(std::ostream& os, const glm::vec3& vec3)
@@ -243,4 +235,17 @@ glm::vec3 rotToVec3(const float yaw, const float pitch)
     ret.y = pitch == 0 ? 0 : sin(pitch);
     ret.z = sin(yaw) * (pitch == 0 ? 1 : cos(pitch));
     return glm::normalize(ret);
+}
+
+glm::vec3 operator*(const glm::vec3& left, const bool& right)
+{
+    if (right)
+        return left;
+    else
+        return glm::vec3(0);
+}
+
+glm::vec3 operator*(const bool& left, const glm::vec3& right)
+{
+    return right * left;
 }

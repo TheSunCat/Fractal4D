@@ -9,8 +9,8 @@
 
 constexpr int WORK_GROUP_SIZE = 16;
 
-constexpr int WINDOW_WIDTH = 856;
-constexpr int WINDOW_HEIGHT = 480;
+constexpr int WINDOW_WIDTH = 1712;
+constexpr int WINDOW_HEIGHT = 960;
 
 #ifdef CLASSIC
 constexpr float RENDER_DIST = 20.0f;

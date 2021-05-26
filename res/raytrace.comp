@@ -17,8 +17,11 @@ struct Camera
 uniform Camera camera;
 uniform vec2 screenSize;
 uniform float time;
+float W = time / 10000;
 
 uniform vec3 color;
+
+#define PI 3.14159265359f
 
 // thanks, http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
 vec3 hsv2rgb(vec3 c)
@@ -39,58 +42,54 @@ vec3 rgb2hsv(vec3 c)
     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
-// default: 8, min: 0, max: 30
-#define NUM_ITERATIONS 8
-
-// default: 6.0, min: 1.0, max: 16.0
-#define EXPONENT 6.0
-
-
-// return no more than distance to object
-float distEst(vec3 pos)
+float atan2(in float y, in float x)
 {
-	vec3 z = vec3(0.0);
-	vec3 d = vec3(1.0);
-	float r = 0.0;
-	float b = 10000.0;
-
-	for (int i = 0; i < 30; ++i) {
-		if (i == NUM_ITERATIONS) {
-			break;
-		}
-		d = EXPONENT * pow(r, EXPONENT-1.0) * d + 1.0;
-		if (r > 0.0) {
-			float phi = atan(z.z, z.x);
-			phi *= EXPONENT;
-			float theta = acos(z.y/r);
-			theta *= EXPONENT;
-			r = pow(r, EXPONENT);
-			z = vec3(cos(phi) * cos(theta), sin(theta), sin(phi) * cos(theta)) * r;
-		}
-		z += pos;
-
-		r = length(z);
-		b = min(r, b);
-		if (r >= 2.0) {
-			break;
-		}
-	}
-	return r * log(r) * 0.5 / length(d);
+    bool s = (abs(x) > abs(y));
+    return mix(PI/2.0 - atan(x,y), atan(y,x), s);
 }
 
-bool rayMarch(in vec3 pos, in vec3 dir, out float travelDist, out int steps)
+int Iterations = 30;
+float Power = 10 * (tan(W / 2) + 1) / 2;
+float Bailout = 2;
+
+float DE(vec3 pos) {
+	vec3 z = pos;
+	float dr = 1.0;
+	float r = 0.0;
+	for (int i = 0; i < Iterations ; i++) {
+		r = length(z);
+		if (r>Bailout) break;
+		
+		// convert to polar coordinates
+		float theta = acos(z.z/r);
+		float phi = atan(z.y,z.x);
+		dr =  pow( r, Power-1.0)*Power*dr + 1.0;
+		
+		// scale and rotate the point
+		float zr = pow( r,Power);
+		theta = theta*Power;
+		phi = phi*Power;
+		
+		// convert back to cartesian coordinates
+		z = zr*vec3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
+		z+=pos;
+	}
+	return 0.5*log(r)*r/dr;
+}
+
+bool rayMarch(in vec3 pos, in vec3 dir, out float travelDist, out int steps, out vec4 resColor)
 {
     bool hit = false;
     travelDist = 0;
     steps = 0;
 
     while(!hit) { // march!
-        float dist = distEst(pos);
+        float dist = DE(pos);
 
         if(travelDist > RENDER_DIST)
             return false;
 
-        if(dist < 0.001)
+        if(dist < 0.00001)
             return true;
 
         pos += dir * dist;
@@ -118,7 +117,8 @@ vec3 getPixel(in vec2 pixel_coords)
     // raymarch outputs
     float theDistance = 0.0;
     int steps = 0;
-    bool hit = rayMarch(camera.pos, rayDir, theDistance, steps);
+    vec4 resColor;
+    bool hit = rayMarch(camera.pos, rayDir, theDistance, steps, resColor);
 
     vec3 hsv = rgb2hsv(color);
     hsv.x *= time/10000.;

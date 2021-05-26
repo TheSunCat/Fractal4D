@@ -63,6 +63,8 @@ glm::vec3 cameraFront;
 glm::vec3 cameraRight;
 glm::vec3 cameraUp;
 
+float moveSpeed = 1.0f;
+
 glm::vec3 worldUp = glm::vec3(0, 1, 0);
 
 float sinYaw, sinPitch;
@@ -152,12 +154,12 @@ void run(GLFWwindow* window) {
         sinPitch = sin(cameraPitch);
 
     	// """"physics""""
-        cameraPos.x += (sinYaw * controller.forward + cosYaw * controller.right) / 100.;
-        cameraPos.z += (cosYaw * controller.forward - sinYaw * controller.right) / 100.;
+        cameraPos.x += (sinYaw * controller.forward + cosYaw * controller.right) / 100. * moveSpeed;
+        cameraPos.z += (cosYaw * controller.forward - sinYaw * controller.right) / 100. * moveSpeed;
 
     	
-        cameraPos += (controller.jump * -worldUp) / 100.F;
-        cameraPos += (controller.sneak * worldUp) / 100.F;
+        cameraPos += (controller.jump * -worldUp) / 100.F * moveSpeed;
+        cameraPos += (controller.sneak * worldUp) / 100.F * moveSpeed;
 
         // Compute the raytracing!
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -242,6 +244,11 @@ void mouse_callback(GLFWwindow*, const double xPosD, const double yPosD)
             cameraYaw = PI + (cameraYaw + PI);
     }
     cameraPitch = clamp(cameraPitch, -PI / 2.0f, PI / 2.0f);
+}
+
+void scroll_callback(GLFWwindow*, double xoffset, double yoffset)
+{
+    moveSpeed += (yoffset);
 }
 
 bool keyDown(GLFWwindow* window, int key)
@@ -417,6 +424,7 @@ int main(const int argc, const char** argv)
     glClearColor(0, 0, 0, 1);
 
     glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     std::cout << "Done!\n";
 

@@ -48,8 +48,12 @@ float atan2(in float y, in float x)
     return mix(PI/2.0 - atan(x,y), atan(y,x), s);
 }
 
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 int Iterations = 30;
-float Power = 10 * (tan(W / 2) + 1) / 2;
+float Power = 10;
 float Bailout = 2;
 
 float DE(vec3 pos) {
@@ -58,33 +62,35 @@ float DE(vec3 pos) {
 	float r = 0.0;
 	for (int i = 0; i < Iterations ; i++) {
 		r = length(z);
-		if (r>Bailout) break;
+		if (r > Bailout) break;
 		
 		// convert to polar coordinates
-		float theta = acos(z.z/r);
-		float phi = atan(z.y,z.x);
-		dr =  pow( r, Power-1.0)*Power*dr + 1.0;
+		float theta = acos(z.z / r);
+		float phi = atan(z.y, z.x);
+		dr = pow(r, Power - 1.0) * Power * dr + 1.0;
 		
 		// scale and rotate the point
-		float zr = pow( r,Power);
-		theta = theta*Power;
-		phi = phi*Power;
+		float zr = pow(r, Power);
+		theta *= Power;
+		phi *= Power;
 		
 		// convert back to cartesian coordinates
-		z = zr*vec3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
+		z = zr*vec3(sin(theta) * cos(phi), sin(phi) * sin(theta), cos(theta));
 		z+=pos;
 	}
-	return 0.5*log(r)*r/dr;
+	return 0.5 * log(r) * r / dr;
 }
 
 bool rayMarch(in vec3 pos, in vec3 dir, out float travelDist, out int steps, out vec4 resColor)
 {
     bool hit = false;
-    travelDist = 0;
     steps = 0;
 
     while(!hit) { // march!
         float dist = DE(pos);
+
+        if(steps == 0)
+            dist *= rand(dir.xy);
 
         if(travelDist > RENDER_DIST)
             return false;
@@ -115,15 +121,12 @@ vec3 getPixel(in vec2 pixel_coords)
                                  temp * camera.cosYaw - frustumRay.x * camera.sinYaw));
     
     // raymarch outputs
-    float theDistance = 0.0;
+    float dist = rand(pixel_coords / 100.f) * 1.f;
     int steps = 0;
     vec4 resColor;
-    bool hit = rayMarch(camera.pos, rayDir, theDistance, steps, resColor);
+    bool hit = rayMarch(camera.pos, rayDir, dist, steps, resColor);
 
-    vec3 hsv = rgb2hsv(color);
-    hsv.x *= time/10000.;
-
-    return hsv2rgb(hsv) * (steps / 255.);
+    return color * (float(steps) / 40.f);
 }
 
 void main() {

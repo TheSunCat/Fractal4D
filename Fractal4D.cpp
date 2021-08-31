@@ -52,9 +52,9 @@ GLuint screenTexture;
 float deltaTime = 16.666f; // 16.66 = 60fps
 
 // spawn player at world center
-glm::vec3 cameraPos = glm::vec3(0, 3, 0);
+glm::vec3 cameraPos = glm::vec3(-1.5, 0, -1.5);
 
-float cameraYaw = 0.01f; // make it not axis aligned by default to avoid raymarching error
+float cameraYaw = PI / 4.f; // PI/4
 float cameraPitch = -2.0f * PI;                                                                                 
 float FOV = 90.0f;
 glm::vec2 frustumDiv = (SCR_RES * FOV);
@@ -179,7 +179,7 @@ void run(GLFWwindow* window) {
         computeShader.setVec3("camera.pos", cameraPos);
         computeShader.setFloat("time", frameTime);
     	
-        computeShader.setVec3("color", glm::vec3(0, 1, 1));
+        computeShader.setVec3("color", glm::vec3(0.592, 0.835, 0.996));
 
 
         glInvalidateTexImage(screenTexture, 0);

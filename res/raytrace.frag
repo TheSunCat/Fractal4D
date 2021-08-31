@@ -1,8 +1,7 @@
-#version 430
-//! layout(local_size_x = 16, local_size_y = 16) in; // this is inserted on load
-layout(rgba32f, binding = 0) writeonly uniform image2D img_output;
+#version 330 core
+in vec2 texCoord;
 
-//! #define RENDER_DIST 100
+#define RENDER_DIST 100
 
 struct Camera
 {
@@ -16,12 +15,8 @@ struct Camera
 
 uniform Camera camera;
 uniform vec2 screenSize;
-uniform float time;
-float W = time / 10000;
 
 uniform vec3 color;
-
-#define PI 3.14159265359f
 
 // thanks, http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
 vec3 hsv2rgb(vec3 c)
@@ -42,6 +37,7 @@ vec3 rgb2hsv(vec3 c)
     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
+#define PI 3.14159265359f
 float atan2(in float y, in float x)
 {
     bool s = (abs(x) > abs(y));
@@ -111,10 +107,10 @@ bool rayMarch(in vec3 pos, in vec3 dir, out float travelDist, out int steps, out
 
 vec3 getPixel(in vec2 pixel_coords)
 {
-    const vec2 frustumRay = (pixel_coords - (0.5 * screenSize)) / camera.frustumDiv;
+    vec2 frustumRay = (pixel_coords - (0.5 * screenSize)) / camera.frustumDiv;
 
     // rotate frustum space to world space
-    const float temp = camera.cosPitch + frustumRay.y * camera.sinPitch;
+    float temp = camera.cosPitch + frustumRay.y * camera.sinPitch;
     
     vec3 rayDir = normalize(vec3(frustumRay.x * camera.cosYaw + temp * camera.sinYaw,
                                  frustumRay.y * camera.cosPitch - camera.sinPitch,
@@ -130,11 +126,8 @@ vec3 getPixel(in vec2 pixel_coords)
 }
 
 void main() {
-    // get index in global work group i.e x,y position
-    ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
-    
-    vec4 pixel = vec4(getPixel(pixel_coords), 1);
+    vec2 pixelCoord = gl_FragCoord.xy;
+    //pixelCoord.y *= -1;
 
-    // output to image
-    imageStore(img_output, pixel_coords, pixel);
+    gl_FragColor = vec4(getPixel(pixelCoord), 0.0);
 }

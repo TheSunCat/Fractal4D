@@ -42,12 +42,13 @@ constexpr glm::vec2 defaultRes(214, 120);
 
 glm::vec2 SCR_RES = defaultRes * float(1 << SCR_DETAIL);
 
+Shader raytraceShader;
 Shader screenShader;
-Shader computeShader;
 GLuint buffer;
-GLuint vao;
+GLuint quadVAO;
 
-GLuint screenTexture;
+GLuint framebuffer;
+GLuint textureColorbuffer;
 
 float deltaTime = 16.666f; // 16.66 = 60fps
 
@@ -70,7 +71,7 @@ glm::vec3 worldUp = glm::vec3(0, 1, 0);
 float sinYaw, sinPitch;
 float cosYaw, cosPitch;
 
-void initTexture(GLuint* texture, const int width, const int height);
+void initFramebuffer(const int width, const int height);
 
 void updateScreenResolution(GLFWwindow* window)
 {
@@ -119,16 +120,14 @@ void updateScreenResolution(GLFWwindow* window)
     }
 
     glfwSetWindowTitle(window, title.c_str());
+    
+    initFramebuffer(int(SCR_RES.x), int(SCR_RES.y));
 
-    glDeleteTextures(1, &screenTexture);
-    initTexture(&screenTexture, int(SCR_RES.x), int(SCR_RES.y));
+    raytraceShader.use();
+    //glViewport(0, 0, SCR_RES.x, SCR_RES.y);
+    glUseProgram(0);
 
     needsResUpdate = false;
-}
-
-void init()
-{
-    
 }
 
 void pollInputs(GLFWwindow* window);
@@ -136,6 +135,8 @@ void pollInputs(GLFWwindow* window);
 void run(GLFWwindow* window) {
     auto lastUpdateTime = currentTime();
     float lastFrameTime = lastUpdateTime - 16;
+
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     while (!glfwWindowShouldClose(window)) {
         const float frameTime = currentTime();
@@ -162,48 +163,39 @@ void run(GLFWwindow* window) {
         cameraPos += (controller.sneak * worldUp) / 100.F * moveSpeed;
 
         // Compute the raytracing!
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glClearColor(0.5, 0.5, 0.5, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
         frustumDiv = (SCR_RES * FOV) / defaultRes;
-
-        computeShader.use();
-
-        computeShader.setVec2("screenSize", SCR_RES.x, SCR_RES.y);
-
-        computeShader.setFloat("camera.cosYaw", cosYaw);
-        computeShader.setFloat("camera.cosPitch", cosPitch);
-        computeShader.setFloat("camera.sinYaw", sinYaw);
-        computeShader.setFloat("camera.sinPitch", sinPitch);
-        computeShader.setVec2("camera.frustumDiv", frustumDiv);
-        computeShader.setVec3("camera.pos", cameraPos);
-        computeShader.setFloat("time", frameTime);
-    	
-        computeShader.setVec3("color", glm::vec3(0.592, 0.835, 0.996));
-
-
-        glInvalidateTexImage(screenTexture, 0);
-
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-        glDispatchCompute(GLuint((SCR_RES.x + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE), GLuint((SCR_RES.y + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE), 1);
-        glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
-        glUseProgram(0);
-
+        
         // render the screen texture
-        screenShader.use();
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(2);
+        raytraceShader.use();
+        raytraceShader.setVec2("screenSize", SCR_RES.x, SCR_RES.y);
 
-        glBindTexture(GL_TEXTURE_2D, screenTexture);
-        glBindBuffer(GL_ARRAY_BUFFER, buffer);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        raytraceShader.setFloat("camera.cosYaw", cosYaw);
+        raytraceShader.setFloat("camera.cosPitch", cosPitch);
+        raytraceShader.setFloat("camera.sinYaw", sinYaw);
+        raytraceShader.setFloat("camera.sinPitch", sinPitch);
+        raytraceShader.setVec2("camera.frustumDiv", frustumDiv);
+        raytraceShader.setVec3("camera.pos", cameraPos);
 
+        raytraceShader.setVec3("color", glm::vec3(0.592, 0.835, 0.996));
+        
+        glBindVertexArray(quadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        glDisableVertexAttribArray(2);
-        glDisableVertexAttribArray(0);
+        
+
+        // render the screen texture
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        screenShader.use();
+
+        glBindVertexArray(quadVAO);
+        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);	// use the color attachment texture as the texture of the quad plane
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glUseProgram(0);
 
@@ -331,29 +323,44 @@ void initBuffers() {
         1.f, 0.f
     };
 
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    glGenVertexArrays(1, &quadVAO);
 
     glGenBuffers(1, &buffer);
+    glBindVertexArray(quadVAO);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void initTexture(GLuint* texture, const int width, const int height) {
-    glGenTextures(1, texture);
-    glBindTexture(GL_TEXTURE_2D, *texture);
+void initFramebuffer(const int width, const int height) {
+    // framebuffer configuration
+    // -------------------------
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    // create a color attachment texture
+    glGenTextures(1, &textureColorbuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glBindImageTexture(0, *texture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height); // use a single renderbuffer object for both a depth AND stencil buffer.
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    glViewport(0, 0, width, height);
+    //glViewport(0, 0, width, height);
 }
 
 int main(const int argc, const char** argv)
@@ -383,7 +390,7 @@ int main(const int argc, const char** argv)
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // add on Mac bc Apple is big dumb :(
 #endif
-    
+
     GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Fractal4D", nullptr, nullptr);
     if (!window)
     {
@@ -400,8 +407,8 @@ int main(const int argc, const char** argv)
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // turn on VSync so we don't run at about a kjghpillion fps
-    glfwSwapInterval(1);
+    // turn off VSync so we run at about a kjghpillion fps
+    glfwSwapInterval(0);
 
     std::cout << "Loading OpenGL functions... ";
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
@@ -415,7 +422,7 @@ int main(const int argc, const char** argv)
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(error_callback, nullptr);
     
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+   // glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     glClearDepth(1);
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_TRUE);
@@ -437,7 +444,7 @@ int main(const int argc, const char** argv)
     const std::string definesStr = defines.str();
 
     screenShader = Shader("screen", "screen");
-    computeShader = Shader("raytrace", HasExtra::Yes, definesStr.c_str());
+    raytraceShader = Shader("screen", "raytrace");
 
     std::cout << "Done!\n";
     
@@ -448,12 +455,10 @@ int main(const int argc, const char** argv)
     std::cout << "Done!\n";
 
     std::cout << "Building render texture... ";
-    initTexture(&screenTexture, int(SCR_RES.x), int(SCR_RES.y));
+    initFramebuffer(int(SCR_RES.x), int(SCR_RES.y));
     std::cout << "Done!\n";
 
-    std::cout << "Initializing engine...\n";
-    init();
-    std::cout << "Finished initializing engine! Fractalizing the renderer...\n";
+    std::cout << "Fractalizing the renderer...\n";
 
     run(window);
 }

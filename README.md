@@ -17,8 +17,9 @@ The shader will be run as a compute shader, which requires at least a GPU suppor
 Make sure you have the GLFW library installed in your system! I used the `glfw-x11` package from the AUR.
 
 To do an out-of-source build, run the following commands:
-1. `mkdir build && cd build`
-2. `cmake ..`
-3. `make`
+1. `mkdir build
+2. `cd build`
+3. `cmake ..`
+4. `make`
 
 The executable Fractal4D will be output. Make sure the res folder is in the working directory!

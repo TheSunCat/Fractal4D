@@ -6,6 +6,8 @@ Edit the `getPixel(in vec2 pixel_coords)` function inside /res/raymarcher.comp w
 The shader will be run as a compute shader, which requires at least a GPU supporting OpenGL 4.3.
 
 # Building
+Make sure you have the GLFW library installed in your system! I used the `glfw-x11` package from the AUR.
+
 To do an out-of-source build, run the following commands:
 1. `mkdir build && cd build`
 2. `cmake ..`

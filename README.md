@@ -1,6 +1,8 @@
 # Fractal4D
 Fractal4D is a simple cross-platform GLFW/OpenGL app to run a function on the GPU for every pixel.
 
+![image](https://user-images.githubusercontent.com/44881120/180643661-52650c69-34bb-455d-b392-2f16c82efa08.png)
+
 # Controls
 - Comma: Lower resolution
 - Dot/period: Increase resolution
@@ -8,6 +10,7 @@ Fractal4D is a simple cross-platform GLFW/OpenGL app to run a function on the GP
 - WASD: Fly in camera direction
 - Space: Fly up
 - Shift: Fly down
+- Scroll: change camera speed
 
 # Usage
 Edit the `getPixel(in vec2 pixel_coords)` function inside /res/raymarcher.comp with the GLSL code you'd like to run on the GPU.

@@ -248,7 +248,7 @@ void mouse_callback(GLFWwindow*, const double xPosD, const double yPosD)
 
 void scroll_callback(GLFWwindow*, double xoffset, double yoffset)
 {
-    moveSpeed += (yoffset);
+    moveSpeed *= (yoffset < 0) ? 0.9 : 1.1;
 }
 
 bool keyDown(GLFWwindow* window, int key)

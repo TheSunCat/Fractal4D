@@ -1,5 +1,7 @@
-# Fractal4D
+# Fractal4D  <a href="https://liberapay.com/TheSunCat/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"> <img src="https://img.shields.io/liberapay/receives/TheSunCat.svg"></a>
 Fractal4D is a simple cross-platform GLFW/OpenGL app to run a function on the GPU for every pixel.
+
+
 
 ![image](https://user-images.githubusercontent.com/44881120/180643661-52650c69-34bb-455d-b392-2f16c82efa08.png)
 
